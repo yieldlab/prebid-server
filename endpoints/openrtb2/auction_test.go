@@ -14,7 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buger/jsonparser"
 	"github.com/evanphx/json-patch"
 	"github.com/mxmCherry/openrtb"
 	analyticsConf "github.com/prebid/prebid-server/analytics/config"
@@ -24,6 +23,7 @@ import (
 	"github.com/prebid/prebid-server/pbsmetrics"
 	"github.com/prebid/prebid-server/stored_requests/backends/empty_fetcher"
 	"github.com/rcrowley/go-metrics"
+	"github.com/tidwall/gjson"
 )
 
 const maxSize = 1024 * 256
@@ -232,14 +232,14 @@ func buildNativeRequest(t *testing.T, nativeData []byte) []byte {
 }
 
 func unpackExamplary(t *testing.T, example []byte) []byte {
-	if value, dataType, _, err := jsonparser.Get(example, "requestPayload"); err != nil {
-		t.Fatalf("Error parsing root.requestPayload from exemplary request: %v.", err)
-	} else if dataType != jsonparser.Object {
-		t.Fatalf("root.requestPayload must be a JSON object. Got %s", dataType.String())
-	} else {
-		return value
+	if !gjson.ValidBytes(example) {
+		t.Fatalf("Invalid json payload.")
 	}
-	return nil
+	result := gjson.GetBytes(example, "requestPayload")
+	if !result.IsObject() {
+		t.Fatal("root.requestPayload must be a JSON object.")
+	}
+	return []byte(result.Raw)
 }
 
 // TestNilExchange makes sure we fail when given nil for the Exchange.

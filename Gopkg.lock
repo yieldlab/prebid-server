@@ -259,6 +259,27 @@
   version = "v1.2.1"
 
 [[projects]]
+  name = "github.com/tidwall/gjson"
+  packages = ["."]
+  revision = "f123b340873a0084cb27267eddd8ff615115fbff"
+  version = "v1.1.2"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/tidwall/match"
+  packages = ["."]
+  revision = "1731857f09b1f38450e2c12409748407822dc6be"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/valyala/fastjson"
+  packages = [
+    ".",
+    "fastfloat"
+  ]
+  revision = "5118345967c35d123022b79c7fbd64961833a913"
+
+[[projects]]
   branch = "master"
   name = "github.com/vrischmann/go-metrics-influxdb"
   packages = ["."]
@@ -331,6 +352,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5f341ea12dca4786d4fa2216749592f36e137e10c48b2a6979721f7119bd6487"
+  inputs-digest = "8a9aeb859de2659f1574cfa454df6eb5d8975920e3f40c8f10f4d80ebb980f7f"
   solver-name = "gps-cdcl"
   solver-version = 1

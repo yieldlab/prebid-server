@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/buger/jsonparser"
+	"github.com/tidwall/gjson"
+
 	"github.com/mxmCherry/openrtb"
 	"github.com/prebid/prebid-server/adapters"
 	"github.com/prebid/prebid-server/openrtb_ext"
@@ -253,9 +254,16 @@ func initPBSAdUnit(imp *openrtb.Imp, adUnit *pbs.PBSAdUnit) error {
 		sizes = append(sizes, imp.Banner.Format...)
 	}
 
-	params, _, _, err := jsonparser.Get(imp.Ext, "bidder")
-	if err != nil {
-		return err
+	if !gjson.ValidBytes(imp.Ext) {
+		return errors.New("imp.Ext is invalid")
+	}
+
+	paramsResult := gjson.GetBytes(imp.Ext, "bidder")
+	var params []byte
+	if paramsResult.Index > 0 {
+		params = imp.Ext[paramsResult.Index : paramsResult.Index+len(paramsResult.Raw)]
+	} else {
+		params = []byte(paramsResult.Raw)
 	}
 
 	mediaTypes := make([]pbs.MediaType, 0, 2)

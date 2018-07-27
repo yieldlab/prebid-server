@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/buger/jsonparser"
+	"github.com/tidwall/gjson"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/prebid/prebid-server/analytics"
@@ -139,13 +139,17 @@ func gdprToString(gdpr *int) string {
 }
 
 func parseBidders(request []byte) ([]byte, error) {
-	value, valueType, _, err := jsonparser.Get(request, "bidders")
-	if err == nil && valueType != jsonparser.NotExist {
-		return value, nil
-	} else if err != jsonparser.KeyPathNotFoundError {
-		return nil, err
+	if !gjson.ValidBytes(request) {
+		return nil, errors.New("request payload was not valid json")
 	}
-	return nil, nil
+	result := gjson.GetBytes(request, "bidders")
+	var biddersData []byte
+	if result.Index > 0 {
+		biddersData = request[result.Index : result.Index+len(result.Raw)]
+	} else {
+		biddersData = []byte(result.Raw)
+	}
+	return biddersData, nil
 }
 
 func cookieSyncStatus(syncCount int) string {

@@ -9,6 +9,7 @@ import (
 	"github.com/mxmCherry/openrtb"
 	"github.com/prebid/prebid-server/openrtb_ext"
 	"github.com/prebid/prebid-server/pbsmetrics"
+	"github.com/valyala/fastjson"
 )
 
 // cleanOpenRTBRequests splits the input request into requests which are sanitized for each bidder. Intended behavior is:
@@ -208,6 +209,12 @@ func parseImpExts(imps []openrtb.Imp) ([]map[string]openrtb.RawJSON, error) {
 // parseAliases parses the aliases from the BidRequest
 func parseAliases(orig *openrtb.BidRequest) (map[string]string, []error) {
 	var aliases map[string]string
+	parser := fastjson.Parser{}
+	val, err := parser.ParseBytes(orig.Ext)
+	if err != nil {
+		return nil, []error{err}
+	}
+
 	if value, dataType, _, err := jsonparser.Get(orig.Ext, "prebid", "aliases"); dataType == jsonparser.Object && err == nil {
 		if err := json.Unmarshal(value, &aliases); err != nil {
 			return nil, []error{err}

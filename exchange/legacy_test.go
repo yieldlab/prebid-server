@@ -6,12 +6,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/buger/jsonparser"
 	"github.com/evanphx/json-patch"
 	"github.com/mxmCherry/openrtb"
 	"github.com/prebid/prebid-server/openrtb_ext"
 	"github.com/prebid/prebid-server/pbs"
 	"github.com/prebid/prebid-server/usersync"
+	"github.com/tidwall/gjson"
 )
 
 func TestSiteVideo(t *testing.T) {
@@ -408,8 +408,8 @@ func assertEquivalentImp(t *testing.T, index int, imp *openrtb.Imp, legacy *pbs.
 		t.Errorf("imp[%d].instl did not translate. OpenRTB %d, legacy %d", index, imp.Instl, legacy.Instl)
 	}
 
-	if params, _, _, _ := jsonparser.Get(imp.Ext, "bidder"); !jsonpatch.Equal(params, legacy.Params) {
-		t.Errorf("imp[%d].ext.bidder did not translate. OpenRTB %s, legacy %s", index, string(params), string(legacy.Params))
+	if result := gjson.GetBytes(imp.Ext, "bidder"); !jsonpatch.Equal([]byte(result.Raw), legacy.Params) {
+		t.Errorf("imp[%d].ext.bidder did not translate. OpenRTB %s, legacy %s", index, result.String(), string(legacy.Params))
 	}
 
 	if imp.Banner != nil {

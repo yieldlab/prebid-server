@@ -12,12 +12,12 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/buger/jsonparser"
 	"github.com/mxmCherry/openrtb"
 	"github.com/prebid/prebid-server/adapters"
 	"github.com/prebid/prebid-server/errortypes"
 	"github.com/prebid/prebid-server/openrtb_ext"
 	"github.com/prebid/prebid-server/pbs"
+	"github.com/tidwall/gjson"
 	"golang.org/x/net/context/ctxhttp"
 )
 
@@ -398,12 +398,12 @@ func openRtbToAdformRequest(request *openrtb.BidRequest) (*adformRequest, []erro
 			continue
 		}
 
-		params, _, _, err := jsonparser.Get(imp.Ext, "bidder")
-		if err != nil {
-			errors = append(errors, &errortypes.BadInput{
-				Message: err.Error(),
-			})
-			continue
+		result := gjson.GetBytes(imp.Ext, "bidder")
+		var params []byte
+		if result.Index > 0 {
+			params = imp.Ext[result.Index : result.Index+len(result.Raw)]
+		} else {
+			params = []byte(result.Raw)
 		}
 		var adformAdUnit adformAdUnit
 		if err := json.Unmarshal(params, &adformAdUnit); err != nil {

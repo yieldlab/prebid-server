@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/buger/jsonparser"
+	"github.com/tidwall/gjson"
 
 	"github.com/julienschmidt/httprouter"
 	analyticsConf "github.com/prebid/prebid-server/analytics/config"
@@ -133,11 +133,7 @@ func assertSyncsExist(t *testing.T, responseBody []byte, expectedBidders ...stri
 
 func assertStatus(t *testing.T, responseBody []byte, expected string) {
 	t.Helper()
-	val, err := jsonparser.GetString(responseBody, "status")
-	if err != nil {
-		t.Errorf("response.status was not a string. Error was %v", err)
-		return
-	}
+	val := gjson.GetBytes(responseBody, "status").String()
 	if val != expected {
 		t.Errorf("response.status was %s, but expected %s", val, expected)
 	}
@@ -146,16 +142,13 @@ func assertStatus(t *testing.T, responseBody []byte, expected string) {
 func parseSyncs(t *testing.T, response []byte) []string {
 	t.Helper()
 	var syncs []string
-	jsonparser.ArrayEach(response, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
-		if dataType != jsonparser.Object {
-			t.Errorf("response.bidder_status contained unexpected element of type %v.", dataType)
+	result := gjson.GetBytes(response, "bidder_status")
+	for _, element := range result.Array() {
+		if !element.IsObject() {
+			t.Errorf("response.bidder_status was not an object, but should be.")
 		}
-		if val, err := jsonparser.GetString(value, "bidder"); err != nil {
-			t.Errorf("response.bidder_status[?].bidder was not a string. Value was %s", string(value))
-		} else {
-			syncs = append(syncs, val)
-		}
-	}, "bidder_status")
+		syncs = append(syncs, element.Get("bidder").String())
+	}
 	return syncs
 }
 

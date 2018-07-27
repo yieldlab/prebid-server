@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/buger/jsonparser"
 	"github.com/mxmCherry/openrtb"
 	"github.com/prebid/prebid-server/config"
@@ -264,24 +266,25 @@ func findBiddersInAuction(t *testing.T, context string, req *openrtb.BidRequest)
 // This is done because the response time will change from run to run, so it's impossible to hardcode a value
 // into the JSON. The best we can do is make sure that the property exists.
 func extractResponseTimes(t *testing.T, context string, bid *openrtb.BidResponse) map[string]int {
-	if data, dataType, _, err := jsonparser.Get(bid.Ext, "responsetimemillis"); err != nil || dataType != jsonparser.Object {
-		t.Errorf("%s: Exchange did not return ext.responsetimemillis object: %v", context, err)
+	result := gjson.GetBytes(bid.Ext, "responsetimemillis")
+	if !result.Exists() || !result.IsObject() {
+		t.Errorf("%s: Exchange did not return ext.responsetimemillis object.", context)
 		return nil
-	} else {
-		responseTimes := make(map[string]int)
-		if err := json.Unmarshal(data, &responseTimes); err != nil {
-			t.Errorf("%s: Failed to unmarshal ext.responsetimemillis into map[string]int: %v", context, err)
-			return nil
-		}
-
-		// Delete the response times so that they don't appear in the JSON, because they can't be tested reliably anyway.
-		// If there's no other ext, just delete it altogether.
-		bid.Ext = jsonparser.Delete(bid.Ext, "responsetimemillis")
-		if diff, err := gojsondiff.New().Compare(bid.Ext, []byte("{}")); err == nil && !diff.Modified() {
-			bid.Ext = nil
-		}
-		return responseTimes
 	}
+
+	responseTimes := make(map[string]int)
+	if err := json.Unmarshal([]byte(result.Raw), &responseTimes); err != nil {
+		t.Errorf("%s: Failed to unmarshal ext.responsetimemillis into map[string]int: %v", context, err)
+		return nil
+	}
+
+	// Delete the response times so that they don't appear in the JSON, because they can't be tested reliably anyway.
+	// If there's no other ext, just delete it altogether.
+	bid.Ext = jsonparser.Delete(bid.Ext, "responsetimemillis")
+	if diff, err := gojsondiff.New().Compare(bid.Ext, []byte("{}")); err == nil && !diff.Modified() {
+		bid.Ext = nil
+	}
+	return responseTimes
 }
 
 func newExchangeForTests(t *testing.T, filename string, expectations map[string]*bidderSpec, aliases map[string]string) Exchange {

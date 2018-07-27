@@ -9,8 +9,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/buger/jsonparser"
 	"github.com/evanphx/json-patch"
@@ -183,6 +184,9 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request) (req *openrtb.
 			return
 		}
 	}
+	if !gjson.ValidBytes(requestJson) {
+		errs = []error{errors.New("request payload JSON was invalid")}
+	}
 
 	timeout := parseTimeout(requestJson, time.Duration(storedRequestTimeoutMillis)*time.Millisecond)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -216,12 +220,11 @@ func (deps *endpointDeps) parseRequest(httpRequest *http.Request) (req *openrtb.
 // If the request defines tmax explicitly, then this will return that duration in milliseconds.
 // If not, it will return the default timeout.
 func parseTimeout(requestJson []byte, defaultTimeout time.Duration) time.Duration {
-	if tmax, dataType, _, err := jsonparser.Get(requestJson, "tmax"); dataType != jsonparser.NotExist && err == nil {
-		if tmaxInt, err := strconv.Atoi(string(tmax)); err == nil && tmaxInt > 0 {
-			return time.Duration(tmaxInt) * time.Millisecond
-		}
+	result := gjson.GetBytes(requestJson, "tmax")
+	if result.Type != gjson.Number {
+		return defaultTimeout
 	}
-	return defaultTimeout
+	return time.Duration(result.Int()) * time.Millisecond
 }
 
 func (deps *endpointDeps) validateRequest(req *openrtb.BidRequest) error {
@@ -798,19 +801,29 @@ func (deps *endpointDeps) processStoredRequests(ctx context.Context, requestJson
 // 3. A list intended to parallel "ids". Each element tells which index of "imp[index]" the corresponding element of "ids" should modify.
 // 4. Any errors which occur due to bad requests. These should warrant an HTTP 4xx response.
 func parseImpInfo(requestJson []byte) (imps []json.RawMessage, ids []string, impIdIndices []int, errs []error) {
-	if impArray, dataType, _, err := jsonparser.Get(requestJson, "imp"); err == nil && dataType == jsonparser.Array {
-		i := 0
-		jsonparser.ArrayEach(impArray, func(imp []byte, dataType jsonparser.ValueType, offset int, err error) {
-			if storedImpId, hasStoredImp, err := getStoredRequestId(imp); err != nil {
-				errs = append(errs, err)
-			} else if hasStoredImp {
-				ids = append(ids, storedImpId)
-				impIdIndices = append(impIdIndices, i)
-			}
-			imps = append(imps, imp)
-			i++
-		})
+	impResult := gjson.GetBytes(requestJson, "imp")
+	if !impResult.IsArray() {
+		return
 	}
+
+	i := 0
+	impResult.ForEach(func(key gjson.Result, val gjson.Result) bool {
+		var impBytes []byte
+		if val.Index > 0 {
+			impBytes = requestJson[val.Index : val.Index+len(val.Raw)]
+		} else {
+			impBytes = []byte(val.Raw)
+		}
+		if storedImpID, hasStoredImp, err := getStoredRequestId(impBytes); err != nil {
+			errs = append(errs, err)
+		} else if hasStoredImp {
+			ids = append(ids, storedImpID)
+			impIdIndices = append(impIdIndices, i)
+		}
+		imps = append(imps, impBytes)
+		i++
+		return true
+	})
 	return
 }
 
@@ -819,18 +832,15 @@ func parseImpInfo(requestJson []byte) (imps []json.RawMessage, ids []string, imp
 // (e.g. malformed json, id not a string, etc).
 func getStoredRequestId(data []byte) (string, bool, error) {
 	// These keys must be kept in sync with openrtb_ext.ExtStoredRequest
-	value, dataType, _, err := jsonparser.Get(data, "ext", "prebid", "storedrequest", "id")
-	if dataType == jsonparser.NotExist {
+	result := gjson.GetBytes(data, "ext.prebid.storedrequest.id")
+	if !result.Exists() {
 		return "", false, nil
 	}
-	if err != nil {
-		return "", false, err
-	}
-	if dataType != jsonparser.String {
+	if result.Type != gjson.String {
 		return "", true, errors.New("ext.prebid.storedrequest.id must be a string")
 	}
 
-	return string(value), true, nil
+	return result.String(), true, nil
 }
 
 // setUserImplicitly uses implicit info from httpReq to populate bidReq.User
