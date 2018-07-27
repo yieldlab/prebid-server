@@ -272,15 +272,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/valyala/fastjson"
-  packages = [
-    ".",
-    "fastfloat"
-  ]
-  revision = "5118345967c35d123022b79c7fbd64961833a913"
-
-[[projects]]
-  branch = "master"
   name = "github.com/vrischmann/go-metrics-influxdb"
   packages = ["."]
   revision = "43af8332c303f62ef62663b02b3b7d8a9802002a"
@@ -352,6 +343,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8a9aeb859de2659f1574cfa454df6eb5d8975920e3f40c8f10f4d80ebb980f7f"
+  inputs-digest = "9583379eba5cdfd1a24e7d6f638bf7e9b47a5d7fcc074b6eab25f2933ed03a99"
   solver-name = "gps-cdcl"
   solver-version = 1
