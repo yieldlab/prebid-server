@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/magiconair/properties/assert"
+	"github.com/mxmCherry/openrtb"
 	"github.com/prebid/prebid-server/cache/dummycache"
 	"github.com/prebid/prebid-server/config"
 )
@@ -746,5 +747,46 @@ func TestParsePBSRequestUsesHostCookie(t *testing.T) {
 	}
 	if uid, _, _ := pbs_req.Cookie.GetUID("family"); uid != "testcookie" {
 		t.Errorf("Failed to leverage host cookie space for user identifier")
+	}
+}
+
+func TestParseConsent(t *testing.T) {
+	doConsentTest(t, `{"consent": "abc"}`, "abc")
+	doConsentTest(t, `{"consent": 5}`, "")
+	doConsentTest(t, `{}`, "")
+	doConsentTest(t, ``, "")
+}
+
+func doConsentTest(t *testing.T, userExt string, expect string) {
+	t.Helper()
+	req := PBSRequest{
+		User: &openrtb.User{
+			Ext: openrtb.RawJSON(userExt),
+		},
+	}
+	parsed := req.ParseConsent()
+	if parsed != expect {
+		t.Errorf("Bad consent string. Expected %s, got %s", expect, parsed)
+	}
+}
+
+func TestParseGDPR(t *testing.T) {
+	doRegsTest(t, `{"gdpr":1}`, "1")
+	doRegsTest(t, `{"gdpr":0}`, "0")
+	doRegsTest(t, `{"gdpr":"0"}`, "")
+	doRegsTest(t, `{}`, "")
+	doRegsTest(t, ``, "")
+}
+
+func doRegsTest(t *testing.T, regsExt string, expect string) {
+	t.Helper()
+	req := PBSRequest{
+		Regs: &openrtb.Regs{
+			Ext: openrtb.RawJSON(regsExt),
+		},
+	}
+	parsed := req.ParseGDPR()
+	if parsed != expect {
+		t.Errorf("Bad gdpr string. Expected %s, got %s", expect, parsed)
 	}
 }
