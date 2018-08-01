@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buger/jsonparser"
+	"github.com/tidwall/gjson"
 
 	"github.com/prebid/prebid-server/config"
 	"github.com/prebid/prebid-server/stored_requests"
@@ -22,7 +22,6 @@ import (
 	"github.com/prebid/prebid-server/cache"
 	"github.com/prebid/prebid-server/prebid"
 	"github.com/prebid/prebid-server/usersync"
-	"strconv"
 )
 
 const MAX_BIDDERS = 8
@@ -372,13 +371,15 @@ func (req *PBSRequest) ParseGDPR() string {
 	if req == nil || req.Regs == nil || len(req.Regs.Ext) == 0 {
 		return ""
 	}
-	val, err := jsonparser.GetInt(req.Regs.Ext, "gdpr")
-	if err != nil {
+	extBytes := []byte(req.Regs.Ext)
+	if !gjson.ValidBytes(extBytes) {
 		return ""
 	}
-	gdpr := strconv.Itoa(int(val))
-
-	return gdpr
+	val := gjson.GetBytes(extBytes, "gdpr")
+	if val.Type != gjson.Number {
+		return ""
+	}
+	return val.String()
 }
 
 // parses the "User.ext.consent" from the request, if it exists. Otherwise returns an empty string.
@@ -393,9 +394,12 @@ func parseString(data []byte, key string) string {
 	if len(data) == 0 {
 		return ""
 	}
-	val, err := jsonparser.GetString(data, key)
-	if err != nil {
+	if !gjson.ValidBytes(data) {
 		return ""
 	}
-	return val
+	result := gjson.GetBytes(data, key)
+	if result.Type != gjson.String {
+		return ""
+	}
+	return result.Str
 }
