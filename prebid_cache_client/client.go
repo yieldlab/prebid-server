@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/buger/jsonparser"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/tidwall/gjson"
+
 	"github.com/golang/glog"
 	"github.com/prebid/prebid-server/config"
 	"golang.org/x/net/context/ctxhttp"
-	"io/ioutil"
-	"net/http"
 )
 
 // Client stores values in Prebid Cache. For more info, see https://github.com/prebid/prebid-cache
@@ -72,25 +74,29 @@ func (c *clientImpl) PutJson(ctx context.Context, values []json.RawMessage) (uui
 		return uuidsToReturn
 	}
 
-	currentIndex := 0
-	processResponse := func(uuidObj []byte, dataType jsonparser.ValueType, offset int, err error) {
-		if uuid, valueType, _, err := jsonparser.Get(uuidObj, "uuid"); err != nil {
-			glog.Errorf("Prebid Cache returned a bad value at index %d. Error was: %v. Response body was: %s", currentIndex, err, string(responseBody))
-		} else if valueType != jsonparser.String {
-			glog.Errorf("Prebid Cache returned a %v at index %d in: %v", valueType, currentIndex, string(responseBody))
-		} else {
-			if uuidsToReturn[currentIndex], err = jsonparser.ParseString(uuid); err != nil {
-				glog.Errorf("Prebid Cache response index %d could not be parsed as string: %v", currentIndex, err)
-				uuidsToReturn[currentIndex] = ""
-			}
-		}
-		currentIndex++
-	}
-
-	if _, err := jsonparser.ArrayEach(responseBody, processResponse, "responses"); err != nil {
-		glog.Errorf("Error interpreting Prebid Cache response: %v\nResponse was: %s", err, string(responseBody))
+	if !gjson.ValidBytes(responseBody) {
+		glog.Errorf("Prebid Cache response body was not valid JSON: %s", err, string(responseBody))
 		return uuidsToReturn
 	}
+
+	responses := gjson.GetBytes(responseBody, "responses")
+	if !responses.IsArray() {
+		glog.Errorf("Prebid Cache responseBody.responses was not a JSON array: %s", err, string(responseBody))
+		return uuidsToReturn
+	}
+
+	currentIndex := 0
+	responses.ForEach(func(_ gjson.Result, response gjson.Result) bool {
+		id := response.Get("uuid")
+		if id.Type != gjson.String {
+			glog.Errorf("Prebid Cache responseBody.responses had a malformed element. Skipping this. Response was: %s", string(responseBody))
+			currentIndex++
+			return true
+		}
+		uuidsToReturn[currentIndex] = id.String()
+		currentIndex++
+		return true
+	})
 
 	return uuidsToReturn
 }

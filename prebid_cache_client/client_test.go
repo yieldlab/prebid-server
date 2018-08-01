@@ -74,8 +74,8 @@ func TestSuccessfulPut(t *testing.T) {
 
 	ids := client.PutJson(context.Background(), []json.RawMessage{json.RawMessage("true"), json.RawMessage("false")})
 	assertIntEqual(t, len(ids), 2)
-	assertStringEqual(t, ids[0], "0")
-	assertStringEqual(t, ids[1], "1")
+	assertStringEqual(t, "0", ids[0])
+	assertStringEqual(t, "1", ids[1])
 }
 
 func assertIntEqual(t *testing.T, expected, actual int) {
