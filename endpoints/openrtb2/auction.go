@@ -807,13 +807,8 @@ func parseImpInfo(requestJson []byte) (imps []json.RawMessage, ids []string, imp
 	}
 
 	i := 0
-	impResult.ForEach(func(key gjson.Result, val gjson.Result) bool {
-		var impBytes []byte
-		if val.Index > 0 {
-			impBytes = requestJson[val.Index : val.Index+len(val.Raw)]
-		} else {
-			impBytes = []byte(val.Raw)
-		}
+	impResult.ForEach(func(_ gjson.Result, val gjson.Result) bool {
+		impBytes := []byte(val.Raw)
 		if storedImpID, hasStoredImp, err := getStoredRequestId(impBytes); err != nil {
 			errs = append(errs, err)
 		} else if hasStoredImp {
