@@ -1,16 +1,16 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"io/ioutil"
 	httpCore "net/http"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	"golang.org/x/net/context/ctxhttp"
 
-	"github.com/buger/jsonparser"
 	"github.com/prebid/prebid-server/stored_requests/events"
 
 	"github.com/golang/glog"
@@ -151,7 +151,11 @@ func (e *HTTPEvents) parse(endpoint string, resp *httpCore.Response, err error) 
 func extractInvalidations(changes map[string]json.RawMessage) []string {
 	deletedIDs := make([]string, 0, len(changes))
 	for id, msg := range changes {
-		if value, _, _, err := jsonparser.Get(msg, "deleted"); err == nil && bytes.Equal(value, []byte("true")) {
+		if !gjson.ValidBytes(msg) {
+			continue
+		}
+		deleted := gjson.GetBytes(msg, "deleted")
+		if deleted.Type == gjson.True {
 			delete(changes, id)
 			deletedIDs = append(deletedIDs, id)
 		}
