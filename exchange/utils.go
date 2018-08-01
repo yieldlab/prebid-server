@@ -2,13 +2,14 @@ package exchange
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 
-	"github.com/buger/jsonparser"
 	"github.com/mxmCherry/openrtb"
 	"github.com/prebid/prebid-server/openrtb_ext"
 	"github.com/prebid/prebid-server/pbsmetrics"
+	"github.com/tidwall/gjson"
 )
 
 // cleanOpenRTBRequests splits the input request into requests which are sanitized for each bidder. Intended behavior is:
@@ -207,14 +208,22 @@ func parseImpExts(imps []openrtb.Imp) ([]map[string]openrtb.RawJSON, error) {
 
 // parseAliases parses the aliases from the BidRequest
 func parseAliases(orig *openrtb.BidRequest) (map[string]string, []error) {
-	var aliases map[string]string
+	aliasJSON := gjson.GetBytes([]byte(orig.Ext), "prebid.aliases").Raw
+	if len(aliasJSON) == 0 {
+		return nil, nil
+	}
 
-	if value, dataType, _, err := jsonparser.Get(orig.Ext, "prebid", "aliases"); dataType == jsonparser.Object && err == nil {
-		if err := json.Unmarshal(value, &aliases); err != nil {
-			return nil, []error{err}
+	aliasMap, ok := gjson.Parse(aliasJSON).Value().(map[string]interface{})
+	if !ok {
+		return nil, []error{errors.New("request.ext.prebid.aliases was not an object with string values")}
+	}
+	aliases := make(map[string]string, len(aliasMap))
+	for key, val := range aliasMap {
+		stringVal, ok := val.(string)
+		if !ok {
+			return nil, []error{fmt.Errorf("request.ext.prebid.aliases.%s was not a string", key)}
 		}
-	} else if dataType != jsonparser.NotExist && err != jsonparser.KeyPathNotFoundError {
-		return nil, []error{err}
+		aliases[key] = stringVal
 	}
 	return aliases, nil
 }
