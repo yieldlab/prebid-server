@@ -12,7 +12,7 @@ func NewOpenxSyncer(externalURL string) *syncer {
 	return &syncer{
 		familyName:          "openx",
 		gdprVendorID:        69,
-		syncEndpointBuilder: resolveMacros("https://rtb.openx.net/sync/prebid?r=" + redirectURL),
+		syncEndpointBuilder: resolveMacros("//rtb.openx.net/sync/prebid?r=" + redirectURL),
 		syncType:            SyncTypeRedirect,
 	}
 }
