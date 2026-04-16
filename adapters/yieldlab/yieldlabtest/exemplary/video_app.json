@@ -99,7 +99,8 @@
             "adsize": "728x90",
             "pid": 1234,
             "did": 5678,
-            "pvid": "40cb3251-1e1e-4cfd-8edc-7d32dc1a21e5"
+            "pvid": "40cb3251-1e1e-4cfd-8edc-7d32dc1a21e5",
+            "adtype": "VIDEO"
           }
         ]
       }

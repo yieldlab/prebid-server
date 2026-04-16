@@ -15,6 +15,7 @@ type bidResponse struct {
 	Pid        uint64       `json:"pid"`
 	Did        uint64       `json:"did"`
 	Pvid       string       `json:"pvid"`
+	Adtype     string       `json:"adtype"`
 	DSA        *dsaResponse `json:"dsa,omitempty"`
 }
 
